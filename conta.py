@@ -1,175 +1,216 @@
-from abc import ABC
-from historico import Historico
-from utils import valida_senha
 from datetime import datetime
-from transacao import*
+from decimal import Decimal
+import hashlib
+import os
 
-
-class Conta(ABC):
-    agencia_padrao = "0001"
-    numero_contas = 0
+class Historico:
+    """Classe responsável por registrar e gerenciar o histórico de transações da conta."""
     
-    def __init__(self, usuario, senha_4_digitos):
-        while not valida_senha(senha_4_digitos, 4):
-            print("Senha invalida. A senha deve conter 4 digitos")
-            senha_4_digitos = input("Crie uma senha de 4 digitos: ")
-
-        Conta.numero_contas += 1
-        self.__agencia = Conta.agencia_padrao
-        self.__numero_conta = Conta.numero_contas
-        self.__usuario = usuario
-        self.__senha_4_digitos = senha_4_digitos
-        self.__saldo = 0.0
-        self.__historico = Historico()
-        
-        
-    @property
-    def agencia(self):
-        return self.__agencia
+    def __init__(self):
+        self._transacoes = []
     
-    @property
-    def numero_conta(self):
-        return self.__numero_conta
-
-    @property
-    def saldo(self):
-        return self.__saldo
+    def adicionar_transacao(self, transacao):
+        """Adiciona uma transação ao histórico com data e hora."""
+        self._transacoes.append({
+            'tipo': transacao.__class__.__name__,
+            'valor': transacao.get_valor(),
+            'data': datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        })
     
-    @property
-    def historico(self):
-        return self.__historico
-    
-    @property
-    def usuario(self):
-        return self.__usuario
-    
-    def realiza_transacao(self, transacao):
-        transacao.registrar(self)
-    
-    def add_saldo(self, valor):
-        """
-        Adiciona saldo na conta
-        """
-        self.__saldo += valor
-        
-    def sub_saldo(self, valor):
-        """
-        Subtrai saldo da conta
-        """
-        self.__saldo -= valor
-
-    def validar_senha(self, senha):
-        return self.__senha_4_digitos == senha
-    
-    def imprime(self):
-        return print(f"Agencia: {self.__agencia} | Conta: {self.__numero_conta} | Tipo: {self.__class__.__name__}")
-    
-    def extrato(self):
-        print("\n================ Extrato ================")
-        print(f"Cliente: {self.__usuario.nome}")
-        print(f"Agencia: {self.__agencia} | Conta: {self.__numero_conta}")
-        print(f"Data Extrato: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
-        print("----------------------------------------------")
-        
-        if not self.__historico.transacoes:
-            print("Não foram realizadas movimentações")
+    def gerar_extrato(self, saldo_atual):
+        """Gera um extrato formatado com todas as transações e saldo atual."""
+        extrato = "\n========== EXTRATO ==========\n"
+        if not self._transacoes:
+            extrato += "Não foram realizadas movimentações.\n"
         else:
-            # [11/11/1908 20:00:40] Saque: R$ 200.00
-            for transacao in self.__historico.transacoes:
-                print(f"[{transacao['data']}] {transacao['tipo']}: R$ {transacao['valor']:.2f}")
-        
-        print("----------------------------------------------")
-        print(f"Saldo: R$ {self.__saldo:.2f}")
-        print("===========================================")
+            for transacao in self._transacoes:
+                extrato += (f"{transacao['data']} - {transacao['tipo']}: "
+                           f"R$ {transacao['valor']:.2f}\n")
+        extrato += f"\nSaldo atual: R$ {saldo_atual:.2f}\n"
+        extrato += "==========================="
+        return extrato
+    
+    def get_transacoes(self):
+        """Retorna a lista de transações."""
+        return self._transacoes
 
+class Conta:
+    """Classe base para contas bancárias."""
+    
+    def __init__(self, cliente, numero):
+        self._cliente = cliente
+        self._numero = numero
+        self._saldo = 0.0
+        self._historico = Historico()
+        self.senha_hash = None  # Agora armazena apenas o hash da senha
+    
+    def get_numero(self):
+        """Retorna o número da conta."""
+        return self._numero
+    
+    def get_cliente(self):
+        """Retorna o cliente titular da conta."""
+        return self._cliente
+    
+    def get_saldo(self):
+        """Retorna o saldo atual da conta."""
+        return self._saldo
+    
+    def get_historico(self):
+        """Retorna o histórico de transações."""
+        return self._historico
+    
+    def verificar_senha(self, senha):
+        """Verifica se a senha fornecida corresponde ao hash armazenado."""
+        if not self.senha_hash:
+            return False
+        # Implementação simplificada - considerar usar bcrypt na versão final
+        return self.senha_hash == hashlib.sha256(senha.encode()).hexdigest()
+    
+    def depositar(self, valor):
+        """Realiza um depósito na conta com validação"""
+        try:
+            if not isinstance(valor, (int, float, Decimal)):
+                raise ValueError("Valor deve ser numérico")
+                
+            valor = Decimal(str(valor)).quantize(Decimal('0.01'))
+            
+            if valor <= 0:
+                raise ValueError("Valor do depósito deve ser positivo")
+                
+            self._saldo += float(valor)  # Conversão explícita para float
+            return True
+            
+        except Exception as e:
+            print(f"Erro no depósito: {str(e)}")
+            raise  # Re-lança a exceção para ser tratada no nível superior
+    
+    def sacar(self, valor):
+        """Realiza um saque na conta com tratamento de tipos"""
+        try:
+            # Converte para Decimal se não for
+            if not isinstance(valor, Decimal):
+                valor = Decimal(str(valor)).quantize(Decimal('0.01'))
+            
+            if valor <= 0:
+                raise ValueError("Valor do saque deve ser positivo")
+                
+            valor_float = float(valor)  # Converte para float para operação
+            if self._saldo >= valor_float:
+                self._saldo -= valor_float
+                return True
+            return False
+            
+        except Exception as e:
+            print(f"Erro no saque: {str(e)}")
+            raise
+    
+    def transferir(self, valor, conta_destino):
+        """Realiza uma transferência para outra conta."""
+        if self.sacar(valor):
+            if conta_destino.depositar(valor):
+                return True
+            # Se o depósito falhar, devolve o valor
+            self._saldo += valor
+        return False
+    
+    def realizar_transacao(self, transacao):
+        """Registra uma transação na conta."""
+        return transacao.registrar(self)
+    
+    def gerar_extrato(self):
+        """Gera o extrato da conta."""
+        return self._historico.gerar_extrato(self._saldo)
+    
+    def to_dict(self):
+        """Converte os dados da conta para dicionário (para persistência)."""
+        return {
+            'numero': self._numero,
+            'cpf_cliente': self._cliente.get_cpf(),
+            'saldo': float(self._saldo),  
+            'senha_hash': self.senha_hash
+        }
 
 class ContaCorrente(Conta):
-    """Classe concreta que herda de conta e implementa uma conta bancaria."""
-    def __init__(self, usuario, senha, limite_saque=500, max_saques_diario=5):
-        super().__init__(usuario, senha)
-        self.__numero_saques = 0
-        self.__limite_saque = limite_saque
-        self.__max_saques_diario = max_saques_diario
+    """Classe que representa uma conta corrente com limite especial."""
+    
+    def __init__(self, cliente, numero, limite=500.0, limite_saques=3):
+        super().__init__(cliente, numero)
+        self._limite = limite
+        self._limite_saques = limite_saques
+        self._saques_realizados = 0
+        self._data_ultimo_saque = None
+    
+    def get_limite(self):
+        """Retorna o limite da conta."""
+        return self._limite
+    
+    def get_limite_saques(self):
+        """Retorna o limite de saques diários."""
+        return self._limite_saques
+    
+    def sacar(self, valor):
+        """Realiza um saque na conta corrente, considerando o limite especial."""
+        hoje = datetime.now().date()
+        
+        # Reinicia contador de saques se for um novo dia
+        if self._data_ultimo_saque != hoje:
+            self._saques_realizados = 0
+            self._data_ultimo_saque = hoje
+        
+        if self._saques_realizados >= self._limite_saques:
+            raise ValueError("Limite diário de saques atingido")
+        
+        if valor <= 0:
+            raise ValueError("Valor do saque deve ser positivo")
+        
+        if valor > (self._saldo + self._limite):
+            raise ValueError("Saldo insuficiente (incluindo limite)")
+        
+        self._saldo -= valor
+        self._saques_realizados += 1
+        return True
 
-    @property
-    def numero_saques(self):
-        return self.__numero_saques
-
-    @numero_saques.setter
-    def numero_saques(self, valor):
-        self.__numero_saques = valor
-
-    @property
-    def limite_saque(self):
-        return self.__limite_saque
-
-    @property
-    def max_saques_diario(self):
-        return self.__max_saques_diario
-
+    def to_dict(self):
+        """Converte os dados da conta corrente para dicionário."""
+        dados = super().to_dict()
+        dados.update({
+            'tipo': 'corrente',
+            'limite': self._limite,
+            'limite_saques': self._limite_saques,
+            'saques_realizados': self._saques_realizados,
+            'data_ultimo_saque': self._data_ultimo_saque.strftime("%Y-%m-%d") if self._data_ultimo_saque else None
+        })
+        return dados
 
 class ContaPoupanca(Conta):
-
-    def __init__(self, usuario, senha):
-        super().__init__(usuario, senha)
-        self.__taxa_rendimento = 0.10  # 10% ao mes
-        self.__rendimento = 0.0
-
-    @property
-    def taxa_rendimento(self):
-        return self.__taxa_rendimento
+    """Classe que representa uma conta poupança com rendimento."""
     
-    @property
-    def rendimento(self):
-        return self.__rendimento
+    def __init__(self, cliente, numero, taxa_rendimento=0.01):
+        super().__init__(cliente, numero)
+        self._taxa_rendimento = taxa_rendimento
+        self._data_ultimo_rendimento = None
     
-    @taxa_rendimento.setter
-    def taxa_rendimento(self, valor):
-        self.__taxa_rendimento = valor
+    def get_taxa_rendimento(self):
+        """Retorna a taxa de rendimento da poupança."""
+        return self._taxa_rendimento
     
-    @rendimento.setter
-    def rendimento(self, valor):
-        self.__rendimento = valor
+    def calcular_rendimento(self):
+        """Calcula e aplica o rendimento da poupança."""
+        hoje = datetime.now().date()
+        if self._data_ultimo_rendimento != hoje:
+            rendimento = self._saldo * self._taxa_rendimento
+            self._saldo += rendimento
+            self._data_ultimo_rendimento = hoje
+            return rendimento
+        return 0.0
     
-    def calcular_rendimento(self): #CALCULAR RENDIMENTO NAO TA FUNCIONANDO
-        """
-        Calcula o rendimento com base no saldo da conta e na taxa de rendimento mensal (10% ao ano).
-        O rendimento é aplicado a cada 5 segundos.
-        """
-        
-        # 1. Obter o saldo atual da conta
-        saldo_atual = self.saldo  # Aqui você usa a função que calcula o saldo a partir das transações no histórico
-        
-        # 2. Encontrar o último depósito no histórico
-        ultimo_deposito = self.historico.ultimo_deposito
-        
-        if ultimo_deposito:
-            # 3. Calcular o tempo que passou desde o último depósito em segundos
-            tempo_passado_em_segundos = (datetime.now() - datetime.strptime(ultimo_deposito['data'], "%d-%m-%Y %H:%M:%S")).total_seconds()
-            
-            # 4. Verificar se o tempo passou pelo menos 5 segundos para aplicar o rendimento
-            if tempo_passado_em_segundos >= 5:
-                print("Calculando rendimento da conta poupança...")
-
-                # 5. Calcular o rendimento mensal (exemplo: 10% ao ano)
-                # Vamos dividir a taxa de rendimento anual por 12 para obter o rendimento mensal
-                taxa_ano = self.__taxa_rendimento  # 10% ao ano
-                taxa_mes = taxa_ano / 12  # 10% / 12 meses
-                
-                # 6. Calcular o rendimento mensal
-                rendimento_mensal = saldo_atual * taxa_mes  # Rendimento mensal
-
-                # 7. Ajustar o rendimento para os 5 segundos passados
-                # 1 mês tem aproximadamente 30 dias, ou seja, 30 * 24 * 60 * 60 segundos
-                # Vamos dividir o rendimento mensal por esses segundos para saber o rendimento por segundo.
-                rendimento_por_segundo = rendimento_mensal / (30 * 24 * 60 * 60)  # Por segundo
-
-                # 8. Calcular o rendimento para os 5 segundos passados
-                rendimento = rendimento_por_segundo * 5  # Multiplicamos pela quantidade de segundos passados (5 segundos)
-                
-                # 9. Adicionar o rendimento ao saldo da conta
-                self.add_saldo(rendimento)
-                
-                # 10. Registrar o rendimento no histórico (como um "depósito de rendimento")
-                self.historico.add_transacao(Deposito(rendimento))  # Criando um depósito com o valor do rendimento
-                print(f"Rendimento de R$ {rendimento:.2f} adicionado na conta.")
+    def to_dict(self):
+        """Converte os dados da conta poupança para dicionário."""
+        dados = super().to_dict()
+        dados.update({
+            'tipo': 'poupanca',
+            'taxa_rendimento': self._taxa_rendimento,
+            'data_ultimo_rendimento': self._data_ultimo_rendimento.strftime("%Y-%m-%d") if self._data_ultimo_rendimento else None
+        })
+        return dados

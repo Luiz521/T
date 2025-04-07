@@ -1,0 +1,66 @@
+# Ambiente virtual Python
+venv/
+.env/
+.venv/
+ENV/
+
+# Arquivos de cache do Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configurações de IDE/Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Arquivos de instalação/distribuição
+*.egg-info/
+*.egg
+dist/
+build/
+pip-wheel-metadata/
+
+# Arquivos de banco de dados
+*.sqlite3
+*.db
+
+# Arquivos de log e debug
+*.log
+*.pot
+*.pid
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de teste/coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Arquivos específicos do projeto (se necessário)
+/instance/
+.webassets-cache
+
+# Arquivos de configuração pessoais
+*.cfg
+*.ini
