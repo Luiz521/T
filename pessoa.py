@@ -1,70 +1,125 @@
 from datetime import datetime
-from abc import ABC
+from typing import List, Dict
+import re
 
-class Pessoa(ABC):
-    """
-    Classe abstrata para representar uma pessoa do sistema.
-    
-    Atributos protegidos:
-    - __nome: Nome completo da pessoa.
-    - __cpf: CPF da pessoa (apenas numeros).
-    - __data_nascimento: Data de nascimento da pessoa no formato "DD/MM/AAAA".
-    - __endereco: Endereço completo da pessoa "Logradouro, numero - Bairro - Cidade - Estado - CEP"
-    
-    Uso do @property:
-    - Permite acessar os atributos de forma segura, sem expo-los diretamente.
-    - Mantem o principio do encapsulamento, evitando modificações diretas.
-    """
-    
-    def __init__(self, nome, cpf, data_nascimento, endereco):
-        self.__nome = nome
-        self.__cpf = cpf
-        self.__data_nascimento = data_nascimento
-        self.__endereco = endereco
+from conta import Conta
 
-    @property
-    def nome(self):
+class Pessoa:
+    """Classe que representa uma pessoa com dados básicos e validações."""
+    
+    def __init__(self, nome: str, cpf: str, data_nascimento: str, endereco: str):
         """
-        Retorna o nome completo da pessoa.
+        Inicializa uma pessoa com dados validados.
+        
+        Args:
+            nome: Nome completo
+            cpf: CPF (apenas números)
+            data_nascimento: Data no formato DD/MM/AAAA
+            endereco: Endereço completo
+            
+        Raises:
+            ValueError: Se algum dado for inválido
         """
-        return self.__nome
-
-    @nome.setter
-    def nome(self, valor):
-        self.__nome = valor
-
-    @property
-    def cpf(self):
-        return self.__cpf
-
-    @cpf.setter
-    def cpf(self, valor):
-        self.__cpf = valor
-
-    @property
-    def data_nascimento(self):
-        return self.__data_nascimento
-
-    @data_nascimento.setter
-    def data_nascimento(self, data):
-        self.__data_nascimento = data
-
-    @property
-    def idade(self):
-        return (datetime.now() - self.data_nascimento).days // 365
+        self.set_nome(nome)
+        self.set_cpf(cpf)
+        self.set_data_nascimento(data_nascimento)
+        self.set_endereco(endereco)
     
-    @property
-    def endereco(self):
-        return self.__endereco
+    def get_nome(self) -> str:
+        """Retorna o nome completo."""
+        return self._nome
     
-    @endereco.setter
-    def endereco(self, valor):
-        self.__endereco = valor
-
-    def apresentar(self):
-        print(f"Nome: {self.nome}, Idade {self.idade}")
-
+    def set_nome(self, nome: str) -> None:
+        """Define o nome com validação."""
+        if not nome or not all(c.isalpha() or c.isspace() for c in nome):
+            raise ValueError("Nome deve conter apenas letras e espaços")
+        self._nome = nome.strip()
+    
+    def get_cpf(self) -> str:
+        """Retorna o CPF formatado."""
+        return f"{self._cpf[:3]}.{self._cpf[3:6]}.{self._cpf[6:9]}-{self._cpf[9:]}"
+    
+    def set_cpf(self, cpf: str) -> None:
+        """Define o CPF com validação."""
+        cpf = re.sub(r'[^0-9]', '', cpf)
+        if len(cpf) != 11 or not cpf.isdigit():
+            raise ValueError("CPF deve conter 11 dígitos")
+        self._cpf = cpf
+    
+    def get_data_nascimento(self) -> str:
+        """Retorna a data de nascimento formatada."""
+        return self._data_nascimento
+    
+    def set_data_nascimento(self, data_nascimento: str) -> None:
+        """Define a data de nascimento com validação."""
+        try:
+            nasc = datetime.strptime(data_nascimento, "%d/%m/%Y")
+            idade = (datetime.now() - nasc).days // 365
+            if idade < 18:
+                raise ValueError("Deve ter 18 anos ou mais")
+        except ValueError:
+            raise ValueError("Data deve estar no formato DD/MM/AAAA")
+        self._data_nascimento = data_nascimento
+    
+    def get_endereco(self) -> str:
+        """Retorna o endereço completo."""
+        return self._endereco
+    
+    def set_endereco(self, endereco: str) -> None:
+        """Define o endereço com validação básica."""
+        if not endereco or len(endereco) < 10:
+            raise ValueError("Endereço muito curto")
+        self._endereco = endereco.strip()
+    
+    def get_idade(self) -> int:
+        """Calcula e retorna a idade em anos."""
+        nasc = datetime.strptime(self._data_nascimento, "%d/%m/%Y")
+        return (datetime.now() - nasc).days // 365
+    
+    def to_dict(self) -> Dict:
+        """Converte os dados para dicionário (serializável)."""
+        return {
+            'nome': self._nome,
+            'cpf': self._cpf,  # Armazenado sem formatação
+            'data_nascimento': self._data_nascimento,
+            'endereco': self._endereco
+        }
 
 class Usuario(Pessoa):
-    """Classe concreta de Usuario que herda de pessoa e representa um usuario do sistema bancario."""
-    pass
+    """Classe que representa um usuário do banco com contas associadas."""
+    
+    def __init__(self, nome: str, cpf: str, data_nascimento: str, endereco: str):
+        super().__init__(nome, cpf, data_nascimento, endereco)
+        self._contas: List['Conta'] = []  # Referência a objetos Conta
+    
+    def get_contas(self) -> List['Conta']:
+        """Retorna lista de contas do usuário."""
+        return self._contas.copy()  # Retorna cópia para evitar modificações externas
+    
+    def add_conta(self, conta: 'Conta') -> None:
+        """Adiciona uma conta ao usuário com validação."""
+        if not hasattr(conta, 'get_numero'):
+            raise ValueError("Objeto conta inválido")
+            
+        if conta.get_numero() in [c.get_numero() for c in self._contas]:
+            raise ValueError("Conta já existe para este usuário")
+            
+        self._contas.append(conta)
+    
+    def remover_conta(self, numero_conta: int) -> bool:
+        """Remove uma conta pelo número."""
+        for i, conta in enumerate(self._contas):
+            if conta.get_numero() == numero_conta:
+                self._contas.pop(i)
+                return True
+        return False
+    
+    def to_dict(self) -> Dict:
+        """Converte os dados para dicionário, incluindo contas."""
+        dados = super().to_dict()
+        dados['contas'] = [c.get_numero() for c in self._contas]
+        return dados
+    
+    def __str__(self) -> str:
+        """Representação textual do usuário."""
+        return f"Usuário: {self.get_nome()} (CPF: {self.get_cpf()})"
