@@ -1,3 +1,4 @@
+from datetime import datetime
 from conta import ContaCorrente, ContaPoupanca
 from pessoa import Usuario
 from utils import valida_nome, valida_data_nascimento, valida_cpf, valida_senha
@@ -12,9 +13,8 @@ class Banco:
         self.db_manager = DatabaseManager(arquivo_json)
         self._usuarios = []
         self._contas = []
+        self._contas_poupanca_ativas = [] 
         self._carregar_dados()
-        
-        # Garante que o próximo número será maior que qualquer conta existente
         if self._contas:
             self._ultimo_numero_conta = max(c.get_numero() for c in self._contas)
         else:
@@ -23,19 +23,18 @@ class Banco:
     def _proximo_numero_conta(self):
         """Retorna o próximo número de conta sequencial"""
         self._ultimo_numero_conta += 1
-        self._salvar_dados()  # Persiste a alteração
+        self._salvar_dados()  
         return self._ultimo_numero_conta
 
     def _hash_senha(self, senha):
         """Gera hash SHA-256 para a senha com salt fixo para testes"""
-        salt = "fixo_para_testes"  # Temporário - depois mudar para salt aleatório
+        salt = "OLHAAEXPLOSAODANDADAN" 
         return hashlib.sha256((salt + senha).encode()).hexdigest()
 
     def _carregar_dados(self):
         """Carrega dados do arquivo JSON."""
         dados = self.db_manager.load_data()
         
-        # Carrega usuários
         self._usuarios = []
         for usuario_data in dados.get('usuarios', []):
             usuario = Usuario(
@@ -46,26 +45,38 @@ class Banco:
             )
             self._usuarios.append(usuario)
         
-        # Carrega contas
         self._contas = []
+        self._contas_poupanca_ativas = []
         for conta_data in dados.get('contas', []):
             usuario = self._buscar_usuario(conta_data['cpf_cliente'])
             if usuario:
                 if conta_data['tipo'] == 'corrente':
                     conta = ContaCorrente(usuario, conta_data['numero'])
-                    conta._limite = conta_data['limite']
-                    conta._limite_saques = conta_data['limite_saques']
-                    conta._saques_realizados = conta_data['saques_realizados']
-                else:
+                    conta._limite = conta_data.get('limite', 500.0)  # Valor padrão
+                    conta._limite_saques = conta_data.get('limite_saques', 3)  # Valor padrão
+                    conta._saques_realizados = conta_data.get('saques_realizados', 0)
+                    data_ultimo_saque = conta_data.get('data_ultimo_saque')
+                    conta._data_ultimo_saque = datetime.strptime(data_ultimo_saque, "%Y-%m-%d").date() if data_ultimo_saque else None
+                elif conta_data['tipo'] == 'poupanca':
                     conta = ContaPoupanca(usuario, conta_data['numero'])
-                    conta._taxa_rendimento = conta_data['taxa_rendimento']
+                    conta._taxa_rendimento = conta_data.get('taxa_rendimento', 0.05)  # 5% padrão
+                    data_ultimo_rendimento = conta_data.get('data_ultimo_rendimento')
+                    conta._data_ultimo_rendimento = datetime.strptime(data_ultimo_rendimento, "%Y-%m-%d %H:%M:%S") if data_ultimo_rendimento else datetime.now()
+                    self._contas_poupanca_ativas.append(conta)
                 
-                conta._saldo = conta_data['saldo']
-                conta.senha_hash = conta_data.get('senha_hash', '')  # Usa get() para compatibilidade
+                conta._saldo = conta_data.get('saldo', 0.0)
+                conta.senha_hash = conta_data.get('senha_hash', '')
                 self._contas.append(conta)
                 usuario.add_conta(conta)
         
         self._ultimo_numero_conta = dados.get('ultimo_numero_conta', 0)
+
+    def encerrar_contas_poupanca(self):
+        """Encerra todas as threads de rendimento ao fechar o app."""
+        for conta in self._contas:
+            if isinstance(conta, ContaPoupanca):
+                conta.encerrar()
+        self._contas_poupanca_ativas = [] 
 
     def _salvar_dados(self):
         """Salva dados no arquivo JSON."""
@@ -85,7 +96,6 @@ class Banco:
 
     def _buscar_usuario(self, cpf):
         """Busca usuário pelo CPF (com ou sem formatação)"""
-        # Remove formatação para comparação
         cpf_limpo = cpf.replace(".", "").replace("-", "")
         
         for usuario in self._usuarios:
@@ -99,7 +109,7 @@ class Banco:
         """Registra uma transação na conta e salva os dados"""
         try:
             if transacao.registrar(self):
-                self._salvar_dados()  # Adiciona esta linha
+                self._salvar_dados()  
                 return True
             return False
         except Exception as e:
@@ -142,7 +152,7 @@ class Banco:
         
         numero = self._proximo_numero_conta()
         conta = ContaCorrente(usuario, numero)
-        conta.senha_hash = self._hash_senha(senha)  # Garante que usamos o mesmo método
+        conta.senha_hash = self._hash_senha(senha)  
         self._contas.append(conta)
         usuario.add_conta(conta)
         self._salvar_dados()
