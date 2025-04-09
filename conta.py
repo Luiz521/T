@@ -2,6 +2,9 @@ from datetime import datetime
 from decimal import Decimal
 import hashlib
 import os
+import threading
+import time
+from datetime import datetime
 
 class Historico:
     """Classe responsável por registrar e gerenciar o histórico de transações da conta."""
@@ -132,7 +135,7 @@ class Conta:
         }
 
 class ContaCorrente(Conta):
-    """Classe que representa uma conta corrente com limite especial."""
+    """Classe que representa uma conta corrente com limite básico."""
     
     def __init__(self, cliente, numero, limite=500.0, limite_saques=3):
         super().__init__(cliente, numero)
@@ -140,17 +143,21 @@ class ContaCorrente(Conta):
         self._limite_saques = limite_saques
         self._saques_realizados = 0
         self._data_ultimo_saque = None
-    
+        self._emprestimos = []  # Lista de empréstimos
+        
     def get_limite(self):
         """Retorna o limite da conta."""
         return self._limite
     
-    def get_limite_saques(self):
-        """Retorna o limite de saques diários."""
-        return self._limite_saques
+    def set_limite(self, novo_limite):
+        """Define um novo limite para a conta."""
+        if novo_limite >= 0:
+            self._limite = novo_limite
+            return True
+        return False
     
     def sacar(self, valor):
-        """Realiza um saque na conta corrente, considerando o limite especial."""
+        """Realiza um saque na conta corrente, considerando o limite."""
         hoje = datetime.now().date()
         
         # Reinicia contador de saques se for um novo dia
@@ -164,13 +171,40 @@ class ContaCorrente(Conta):
         if valor <= 0:
             raise ValueError("Valor do saque deve ser positivo")
         
+        # Verifica se o saque está dentro do limite (saldo + limite)
         if valor > (self._saldo + self._limite):
             raise ValueError("Saldo insuficiente (incluindo limite)")
         
         self._saldo -= valor
         self._saques_realizados += 1
         return True
-
+    
+    def solicitar_emprestimo(self, valor, parcelas):
+        """Solicita um empréstimo."""
+        if valor <= 0:
+            raise ValueError("Valor do empréstimo deve ser positivo")
+        if parcelas <= 0:
+            raise ValueError("Número de parcelas deve ser positivo")
+            
+        # Simples verificação de crédito - poderia ser mais complexo
+        if valor > self._limite * 5:
+            raise ValueError("Valor do empréstimo excede seu limite")
+            
+        emprestimo = {
+            'valor': valor,
+            'parcelas': parcelas,
+            'data': datetime.now(),
+            'parcelas_pagas': 0,
+            'valor_pago': 0.0
+        }
+        self._emprestimos.append(emprestimo)
+        self._saldo += valor
+        return True
+    
+    def get_emprestimos(self):
+        """Retorna lista de empréstimos."""
+        return self._emprestimos.copy()
+    
     def to_dict(self):
         """Converte os dados da conta corrente para dicionário."""
         dados = super().to_dict()
@@ -179,38 +213,72 @@ class ContaCorrente(Conta):
             'limite': self._limite,
             'limite_saques': self._limite_saques,
             'saques_realizados': self._saques_realizados,
-            'data_ultimo_saque': self._data_ultimo_saque.strftime("%Y-%m-%d") if self._data_ultimo_saque else None
+            'data_ultimo_saque': self._data_ultimo_saque.strftime("%Y-%m-%d") if self._data_ultimo_saque else None,
+            'emprestimos': self._emprestimos
         })
         return dados
 
 class ContaPoupanca(Conta):
-    """Classe que representa uma conta poupança com rendimento."""
+    """Classe que representa uma conta poupança com rendimento em tempo real."""
     
-    def __init__(self, cliente, numero, taxa_rendimento=0.01):
+    def __init__(self, cliente, numero, taxa_rendimento=0.05):  # 5% por minuto
         super().__init__(cliente, numero)
         self._taxa_rendimento = taxa_rendimento
-        self._data_ultimo_rendimento = None
+        self._ultima_atualizacao = datetime.now()
+        self._thread_rendimento = None
+        self._rodando = False
+        self._iniciar_rendimento_automatico()
     
-    def get_taxa_rendimento(self):
-        """Retorna a taxa de rendimento da poupança."""
-        return self._taxa_rendimento
+    def _iniciar_rendimento_automatico(self):
+        """Inicia a thread que calcula rendimentos automaticamente."""
+        if self._thread_rendimento is None:
+            self._rodando = True
+            self._thread_rendimento = threading.Thread(
+                target=self._calcular_rendimento_continuo, 
+                daemon=True
+            )
+            self._thread_rendimento.start()
     
-    def calcular_rendimento(self):
-        """Calcula e aplica o rendimento da poupança."""
-        hoje = datetime.now().date()
-        if self._data_ultimo_rendimento != hoje:
-            rendimento = self._saldo * self._taxa_rendimento
-            self._saldo += rendimento
-            self._data_ultimo_rendimento = hoje
-            return rendimento
-        return 0.0
+    def _calcular_rendimento_continuo(self):
+        """Calcula rendimentos a cada minuto enquanto a conta existir."""
+        while self._rodando:
+            time.sleep(60)  # Espera 1 minuto
+            self._aplicar_rendimento()
+    
+    def _aplicar_rendimento(self):
+        """Aplica o rendimento de 5% sobre o saldo atual."""
+        with threading.Lock():  # Previne condições de corrida
+            if self._saldo > 0:  # Só aplica rendimento se houver saldo positivo
+                rendimento = self._saldo * self._taxa_rendimento
+                self._saldo += rendimento
+                self._ultima_atualizacao = datetime.now()
+                
+                # Adiciona ao histórico como uma transação especial
+                transacao = {
+                    'tipo': 'Rendimento',
+                    'valor': rendimento,
+                    'data': self._ultima_atualizacao.strftime("%d/%m/%Y %H:%M:%S")
+                }
+                self._historico._transacoes.append(transacao)
+    
+    def encerrar(self):
+        """Encerra a thread de rendimento automático."""
+        self._rodando = False
+        if self._thread_rendimento:
+            self._thread_rendimento.join()
+    
+    def get_saldo(self):
+        """Retorna o saldo atual, garantindo thread safety."""
+        with threading.Lock():
+            return self._saldo
     
     def to_dict(self):
-        """Converte os dados da conta poupança para dicionário."""
+        """Converte os dados para dicionário (serialização)."""
         dados = super().to_dict()
         dados.update({
             'tipo': 'poupanca',
             'taxa_rendimento': self._taxa_rendimento,
-            'data_ultimo_rendimento': self._data_ultimo_rendimento.strftime("%Y-%m-%d") if self._data_ultimo_rendimento else None
+            'data_ultimo_rendimento': self._ultima_atualizacao.strftime("%Y-%m-%d %H:%M:%S"),
+            'minutos_acumulados': getattr(self, '_minutos_acumulados', 0)  # Campo adicional se existir
         })
         return dados

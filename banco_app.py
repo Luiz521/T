@@ -5,7 +5,7 @@ from banco import Banco
 from pessoa import Usuario
 from conta import ContaCorrente, ContaPoupanca
 from transacao import Deposito, Saque, Transferencia
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 class BankAppTkinter:
@@ -14,13 +14,172 @@ class BankAppTkinter:
         self.banco = Banco()
         self.current_account = None
         
-        # Adiciona este handler
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.setup_ui()
+
+    def mostrar_rendimento_tempo_real(self):
+        """Mostra o rendimento em tempo real da poupança."""
+        if not isinstance(self.current_account, ContaPoupanca):
+            messagebox.showwarning("Aviso", "Esta operação é válida apenas para contas poupança", parent=self.root)
+            return
+        
+        self.rendimento_window = tk.Toplevel(self.root)
+        self.rendimento_window.title("Rendimento em Tempo Real")
+        self.rendimento_window.geometry("400x300")
+        
+        # Variáveis de controle
+        self.atualizando_rendimento = True
+        self.saldo_var = tk.StringVar(value=f"R$ {self.current_account.get_saldo():.2f}")
+        self.ultima_atualizacao_var = tk.StringVar(value="Calculando...")
+        self.proximo_rendimento_var = tk.StringVar(value="Calculando...")
+        
+        # Interface
+        ttk.Label(self.rendimento_window, text="Saldo Atual:", font=('Arial', 12)).pack(pady=5)
+        ttk.Label(self.rendimento_window, textvariable=self.saldo_var, font=('Arial', 14, 'bold')).pack(pady=5)
+        
+        ttk.Label(self.rendimento_window, text="Último Rendimento:", font=('Arial', 10)).pack(pady=5)
+        ttk.Label(self.rendimento_window, textvariable=self.ultima_atualizacao_var, font=('Arial', 10)).pack(pady=5)
+        
+        ttk.Label(self.rendimento_window, text="Próximo Rendimento em:", font=('Arial', 10)).pack(pady=5)
+        ttk.Label(self.rendimento_window, textvariable=self.proximo_rendimento_var, font=('Arial', 10)).pack(pady=5)
+        
+        # Atualização contínua
+        self._atualizar_interface_rendimento()
+        
+
+
+    def _atualizar_dados_rendimento(self):
+        """Atualiza os dados exibidos na janela de rendimento."""
+        if hasattr(self.current_account, '_ultima_atualizacao'):
+            self.ultima_atualizacao_var.set(
+                self.current_account._ultima_atualizacao.strftime("%H:%M:%S")
+            )
+            
+            # Calcula tempo até próximo rendimento
+            agora = datetime.now()
+            proxima_atualizacao = self.current_account._ultima_atualizacao + timedelta(minutes=1)
+            segundos_restantes = (proxima_atualizacao - agora).total_seconds()
+            
+            if segundos_restantes > 0:
+                self.proximo_rendimento_var.set(f"{int(segundos_restantes)} segundos")
+            else:
+                self.proximo_rendimento_var.set("Calculando...")
+
+    def _atualizar_interface_rendimento(self):
+        """Atualiza a interface periodicamente."""
+        if self.atualizando_rendimento and hasattr(self, 'rendimento_window'):
+            try:
+                # Atualiza saldo
+                self.saldo_var.set(f"R$ {self.current_account.get_saldo():.2f}")
+                
+                # Atualiza último rendimento
+                ultima_atualizacao = getattr(self.current_account, '_ultima_atualizacao', None)
+                if ultima_atualizacao:
+                    self.ultima_atualizacao_var.set(ultima_atualizacao.strftime("%H:%M:%S"))
+                
+                # Calcula tempo até próximo rendimento
+                agora = datetime.now()
+                proxima_atualizacao = ultima_atualizacao + timedelta(minutes=1) if ultima_atualizacao else agora + timedelta(minutes=1)
+                segundos_restantes = max(0, (proxima_atualizacao - agora).total_seconds())
+                
+                minutos = int(segundos_restantes // 60)
+                segundos = int(segundos_restantes % 60)
+                self.proximo_rendimento_var.set(f"{minutos:02d}:{segundos:02d}")
+                
+            except Exception as e:
+                print(f"Erro ao atualizar rendimento: {str(e)}")
+            
+            # Agenda próxima atualização em 1 segundo
+            self.rendimento_window.after(1000, self._atualizar_interface_rendimento)
+
+    def _fechar_janela_rendimento(self):
+        """Encerra a atualização automática ao fechar a janela."""
+        self.atualizando_rendimento = False
+        if hasattr(self, 'rendimento_window'):
+            self.rendimento_window.destroy()
+
+
+    def show_menu_limite(self):
+        """Mostra o menu de gestão de limite da conta corrente."""
+        if not isinstance(self.current_account, ContaCorrente):
+            messagebox.showwarning("Aviso", "Esta operação é válida apenas para contas correntes", parent=self.root)
+            return
+            
+        self.limite_window = tk.Toplevel(self.root)
+        self.limite_window.title("Gestão de Limite")
+        self.limite_window.geometry("400x250")
+        
+        # Frame principal
+        main_frame = ttk.Frame(self.limite_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Informações da conta
+        ttk.Label(main_frame, text=f"Saldo: R$ {self.current_account.get_saldo():,.2f}", 
+                font=('Arial', 12)).pack(pady=5)
+        
+        ttk.Label(main_frame, text=f"Limite Atual: R$ {self.current_account.get_limite():,.2f}", 
+                font=('Arial', 12)).pack(pady=5)
+        
+        # Botões de operações
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Button(btn_frame, text="Alterar Limite", 
+                command=self.show_alterar_limite).pack(fill=tk.X, pady=5)
+        
+        ttk.Button(btn_frame, text="Fechar", 
+                command=self.limite_window.destroy).pack(fill=tk.X, pady=5)
+
+    def show_alterar_limite(self):
+        """Mostra janela para alterar o limite da conta."""
+        self.alterar_window = tk.Toplevel(self.limite_window)
+        self.alterar_window.title("Alterar Limite")
+        self.alterar_window.geometry("300x200")
+        
+        # Frame principal
+        main_frame = ttk.Frame(self.alterar_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Formulário
+        ttk.Label(main_frame, text="Novo Valor do Limite:").pack(pady=5)
+        self.novo_limite_var = tk.StringVar(value=str(self.current_account.get_limite()))
+        ttk.Entry(main_frame, textvariable=self.novo_limite_var).pack(pady=5)
+        
+        # Botões
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Button(btn_frame, text="Confirmar", 
+                command=self.alterar_limite).pack(side=tk.LEFT, expand=True, padx=5)
+        
+        ttk.Button(btn_frame, text="Cancelar", 
+                command=self.alterar_window.destroy).pack(side=tk.LEFT, expand=True, padx=5)
+
+    def alterar_limite(self):
+        """Altera o limite da conta corrente."""
+        try:
+            novo_limite = float(self.novo_limite_var.get())
+            
+            if novo_limite < 0:
+                raise ValueError("O limite não pode ser negativo")
+                
+            # Verifica se há saldo negativo que excederia o novo limite
+            if self.current_account.get_saldo() < 0 and abs(self.current_account.get_saldo()) > novo_limite:
+                raise ValueError("Não é possível reduzir o limite abaixo do saldo negativo atual")
+                
+            if self.current_account.set_limite(novo_limite):
+                messagebox.showinfo("Sucesso", f"Limite alterado para R$ {novo_limite:,.2f}", 
+                                parent=self.alterar_window)
+                self.alterar_window.destroy()
+                self.limite_window.destroy()
+                self.show_menu_limite()
+                
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e), parent=self.alterar_window)
             
     def setup_theme(self):
         """Configura o tema visual da aplicação"""
-        # Usa o tema padrão do sistema
+
         self.style = ttk.Style()
         self.style.configure('TLabel', font=('Arial', 10))
         self.style.configure('TButton', font=('Arial', 10))
@@ -31,29 +190,22 @@ class BankAppTkinter:
         self.root.geometry("1200x800")
         self.root.minsize(1000, 700)
         
-        # Barra de status
         self.status_var = tk.StringVar()
         self.status_var.set("Pronto")
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
         
-        # Menu principal
         self.setup_menu()
         
-        # Abas principais
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True)
         
-        # Aba Dashboard
         self.setup_dashboard_tab()
         
-        # Aba Clientes
         self.setup_clients_tab()
         
-        # Aba Contas
         self.setup_accounts_tab()
         
-        # Inicializa dados de exemplo
         self.inicializar_dados_exemplo()
         self.update_clientes_table()
         self.update_contas_table()
@@ -653,7 +805,7 @@ class BankAppTkinter:
                  font=('Arial', 10, 'bold')).pack(anchor=tk.W)
         
         # Botões de operações
-        btn_frame = ttk.LabelFrame(main_frame, text="Operações", padding=10)
+        btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill=tk.BOTH, expand=True)
         
         # Configuração dos botões
@@ -665,9 +817,15 @@ class BankAppTkinter:
             ("Histórico Completo", self.mostrar_historico_completo)
         ]
         
+
         if isinstance(self.current_account, ContaPoupanca):
-            buttons.append(("Calcular Rendimento", self.calcular_rendimento))
-        
+            buttons.append(("Ver Rendimento", self.mostrar_rendimento_tempo_real))
+
+        if isinstance(self.current_account, ContaCorrente):
+            ttk.Button(btn_frame, text="Gestão de Limite", 
+                    command=self.show_menu_limite).pack(fill=tk.X, pady=5)
+        elif isinstance(self.current_account, ContaCorrente):
+            buttons.append(("Empréstimos", self.show_menu_emprestimo))
         for text, command in buttons:
             ttk.Button(btn_frame, text=text, command=command).pack(fill=tk.X, pady=5)
         
@@ -675,6 +833,94 @@ class BankAppTkinter:
         ttk.Button(main_frame, text="Fechar", 
                   command=self.operacoes_window.destroy).pack(pady=10)
     
+
+
+    def show_menu_emprestimo(self):
+        """Mostra o menu de empréstimos para conta corrente."""
+        if not isinstance(self.current_account, ContaCorrente):
+            messagebox.showwarning("Aviso", "Esta operação é válida apenas para contas correntes", parent=self.root)
+            return
+            
+        self.emprestimo_window = tk.Toplevel(self.root)
+        self.emprestimo_window.title("Empréstimos")
+        self.emprestimo_window.geometry("500x400")
+        
+        # Frame principal
+        main_frame = ttk.Frame(self.emprestimo_window)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Botão para novo empréstimo
+        ttk.Button(main_frame, text="Solicitar Novo Empréstimo", 
+                command=self.show_solicitar_emprestimo).pack(pady=10)
+        
+        # Lista de empréstimos
+        ttk.Label(main_frame, text="Empréstimos Ativos:").pack()
+        
+        tree_frame = ttk.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        
+        columns = ("valor", "parcelas", "data", "status")
+        self.emprestimos_tree = ttk.Treeview(tree_frame, columns=columns, show="headings")
+        
+        for col in columns:
+            self.emprestimos_tree.heading(col, text=col.capitalize())
+            self.emprestimos_tree.column(col, width=100)
+        
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.emprestimos_tree.yview)
+        self.emprestimos_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.emprestimos_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Preencher a árvore
+        for emp in self.current_account.get_emprestimos():
+            status = f"{emp['parcelas_pagas']}/{emp['parcelas']} parcelas"
+            self.emprestimos_tree.insert("", tk.END, values=(
+                f"R$ {emp['valor']:,.2f}",
+                emp['parcelas'],
+                emp['data'].strftime("%d/%m/%Y"),
+                status
+            ))
+        
+        ttk.Button(main_frame, text="Fechar", 
+                command=self.emprestimo_window.destroy).pack(pady=10)
+
+    def show_solicitar_emprestimo(self):
+        """Mostra janela para solicitar empréstimo."""
+        self.solicitar_window = tk.Toplevel(self.emprestimo_window)
+        self.solicitar_window.title("Solicitar Empréstimo")
+        self.solicitar_window.geometry("300x200")
+        
+        # Variáveis
+        self.emprestimo_valor_var = tk.StringVar()
+        self.emprestimo_parcelas_var = tk.StringVar(value="12")
+        
+        # Formulário
+        ttk.Label(self.solicitar_window, text="Valor do Empréstimo:").pack(pady=5)
+        ttk.Entry(self.solicitar_window, textvariable=self.emprestimo_valor_var).pack(pady=5)
+        
+        ttk.Label(self.solicitar_window, text="Número de Parcelas:").pack(pady=5)
+        ttk.Entry(self.solicitar_window, textvariable=self.emprestimo_parcelas_var).pack(pady=5)
+        
+        ttk.Button(self.solicitar_window, text="Solicitar", 
+                command=self.solicitar_emprestimo).pack(pady=10)
+
+    def solicitar_emprestimo(self):
+        """Processa a solicitação de empréstimo."""
+        try:
+            valor = float(self.emprestimo_valor_var.get())
+            parcelas = int(self.emprestimo_parcelas_var.get())
+            
+            if self.current_account.solicitar_emprestimo(valor, parcelas):
+                messagebox.showinfo("Sucesso", f"Empréstimo de R$ {valor:,.2f} concedido!", 
+                                parent=self.solicitar_window)
+                self.solicitar_window.destroy()
+                self.emprestimo_window.destroy()
+                self.show_menu_emprestimo()
+                
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e), parent=self.solicitar_window)
+
     def show_deposito_window(self):
         """Mostra a janela de depósito"""
         self.deposito_window = tk.Toplevel(self.operacoes_window)
@@ -759,7 +1005,6 @@ class BankAppTkinter:
         ttk.Button(btn_frame, text="Cancelar", 
                   command=self.saque_window.destroy).pack(side=tk.LEFT, expand=True, padx=5)
         
-        # Focar no campo de valor
         valor_entry.focus_set()
     
     def realizar_saque(self):
@@ -874,7 +1119,6 @@ class BankAppTkinter:
                  text=f"Saldo: R$ {self.current_account.get_saldo():,.2f}",
                  font=('Arial', 12)).pack(side=tk.RIGHT)
         
-        # Área de texto
         text_frame = ttk.Frame(main_frame)
         text_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -887,12 +1131,10 @@ class BankAppTkinter:
         
         scrollbar.config(command=extrato_text.yview)
         
-        # Obter extrato da conta
         extrato = self.current_account.gerar_extrato()
         extrato_text.insert(tk.END, extrato)
         extrato_text.config(state=tk.DISABLED)
         
-        # Botão de fechar
         ttk.Button(main_frame, text="Fechar", 
                   command=extrato_window.destroy).pack(pady=10)
     
@@ -904,11 +1146,9 @@ class BankAppTkinter:
         historico_window.transient(self.operacoes_window)
         historico_window.grab_set()
         
-        # Frame principal
         main_frame = ttk.Frame(historico_window)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Cabeçalho
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=tk.X)
         
@@ -916,7 +1156,6 @@ class BankAppTkinter:
                  text=f"Histórico - Conta {self.current_account.get_numero()}",
                  font=('Arial', 12, 'bold')).pack(side=tk.LEFT)
         
-        # Tabela de transações
         tree_frame = ttk.Frame(main_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -938,7 +1177,6 @@ class BankAppTkinter:
         historico_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Preenche a tabela com as transações
         transacoes = self.current_account.get_historico().get_transacoes()
         saldo = 0
         
@@ -955,7 +1193,6 @@ class BankAppTkinter:
                 f"{saldo:,.2f}"
             ))
         
-        # Botão de fechar
         ttk.Button(main_frame, text="Fechar", 
                   command=historico_window.destroy).pack(pady=10)
     
@@ -980,41 +1217,107 @@ class BankAppTkinter:
         reports_window.transient(self.root)
         reports_window.grab_set()
         
-        # Frame principal
         main_frame = ttk.Frame(reports_window)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         ttk.Label(main_frame, text="Relatórios Disponíveis", font=('Arial', 12, 'bold')).pack(pady=10)
         
-        # Botões de relatórios
         ttk.Button(main_frame, text="Clientes por Faixa Etária", 
                   command=self.gerar_relatorio_idade).pack(fill=tk.X, pady=5)
         
         ttk.Button(main_frame, text="Saldos por Tipo de Conta", 
                   command=self.gerar_relatorio_saldos).pack(fill=tk.X, pady=5)
-        
-        ttk.Button(main_frame, text="Movimentações por Período", 
-                  command=self.gerar_relatorio_movimentacoes).pack(fill=tk.X, pady=5)
-        
-        # Botão de fechar
-        ttk.Button(main_frame, text="Fechar", 
-                  command=reports_window.destroy).pack(pady=10)
     
     def gerar_relatorio_idade(self):
         """Gera relatório de clientes por faixa etária"""
-        # Implementar lógica do relatório
-        messagebox.showinfo("Relatório", "Relatório de clientes por faixa etária gerado", parent=self.root)
+        try:
+            faixas = [
+                (18, 25, "18-25 anos"),
+                (26, 35, "26-35 anos"),
+                (36, 50, "36-50 anos"),
+                (51, 65, "51-65 anos"),
+                (66, 120, "66+ anos")
+            ]
+            
+            contagem = {faixa[2]: 0 for faixa in faixas}
+            
+            for usuario in self.banco.get_usuarios():
+                idade = usuario.get_idade()
+                for min_age, max_age, label in faixas:
+                    if min_age <= idade <= max_age:
+                        contagem[label] += 1
+                        break
+            
+            relatorio = "=== Relatório de Clientes por Faixa Etária ===\n\n"
+            for faixa, qtd in contagem.items():
+                relatorio += f"{faixa}: {qtd} clientes\n"
+            
+            self._mostrar_relatorio("Clientes por Faixa Etária", relatorio)
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao gerar relatório: {str(e)}", parent=self.root)
     
     def gerar_relatorio_saldos(self):
         """Gera relatório de saldos por tipo de conta"""
-        # Implementar lógica do relatório
-        messagebox.showinfo("Relatório", "Relatório de saldos por tipo de conta gerado", parent=self.root)
+        try:
+            saldo_corrente = 0
+            saldo_poupanca = 0
+            qtd_corrente = 0
+            qtd_poupanca = 0
+            
+            for conta in self.banco.get_contas():
+                if isinstance(conta, ContaCorrente):
+                    saldo_corrente += conta.get_saldo()
+                    qtd_corrente += 1
+                elif isinstance(conta, ContaPoupanca):
+                    saldo_poupanca += conta.get_saldo()
+                    qtd_poupanca += 1
+            
+            relatorio = "=== Relatório de Saldos por Tipo de Conta ===\n\n"
+            relatorio += f"Contas Correntes: {qtd_corrente}\n"
+            relatorio += f"Saldo Total: R$ {saldo_corrente:,.2f}\n"
+            relatorio += f"Média por conta: R$ {saldo_corrente/qtd_corrente if qtd_corrente > 0 else 0:,.2f}\n\n"
+            relatorio += f"Contas Poupança: {qtd_poupanca}\n"
+            relatorio += f"Saldo Total: R$ {saldo_poupanca:,.2f}\n"
+            relatorio += f"Média por conta: R$ {saldo_poupanca/qtd_poupanca if qtd_poupanca > 0 else 0:,.2f}\n\n"
+            relatorio += f"Saldo Geral: R$ {saldo_corrente + saldo_poupanca:,.2f}"
+            
+            self._mostrar_relatorio("Saldos por Tipo de Conta", relatorio)
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao gerar relatório: {str(e)}", parent=self.root)
     
-    def gerar_relatorio_movimentacoes(self):
-        """Gera relatório de movimentações por período"""
-        # Implementar lógica do relatório
-        messagebox.showinfo("Relatório", "Relatório de movimentações por período gerado", parent=self.root)
-    
+  
+    def _mostrar_relatorio(self, titulo, conteudo):
+        """Mostra o relatório em uma janela dedicada"""
+        relatorio_window = tk.Toplevel(self.root)
+        relatorio_window.title(titulo)
+        relatorio_window.geometry("600x400")
+        
+        # Frame para o texto
+        text_frame = ttk.Frame(relatorio_window)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Text widget
+        texto = tk.Text(text_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set,
+                    font=('Courier', 10), padx=10, pady=10)
+        texto.pack(fill=tk.BOTH, expand=True)
+        
+        # Configurar scrollbar
+        scrollbar.config(command=texto.yview)
+        
+        # Inserir conteúdo
+        texto.insert(tk.END, conteudo)
+        texto.config(state=tk.DISABLED)
+        
+        # Botão de fechar
+        ttk.Button(relatorio_window, text="Fechar", 
+                command=relatorio_window.destroy).pack(pady=10)
+        
     def show_about(self):
         """Mostra a janela 'Sobre'"""
         messagebox.showinfo("Sobre", 
@@ -1028,7 +1331,7 @@ class BankAppTkinter:
     def on_close(self):
         """Executado quando a janela principal é fechada"""
         try:
-            self.banco._salvar_dados()  # Força salvar antes de fechar
+            self.banco._salvar_dados()  
             self.root.destroy()
         except Exception as e:
             print(f"Erro ao salvar dados: {str(e)}")
@@ -1038,4 +1341,10 @@ class BankAppTkinter:
 if __name__ == "__main__":
     root = tk.Tk()
     app = BankAppTkinter(root)
+    
+    def on_closing():
+        app.banco.encerrar_contas_poupanca()
+        root.destroy()
+    
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
