@@ -95,15 +95,15 @@ class Usuario(Pessoa):
     def get_contas(self) -> List['Conta']:
         """Retorna lista de contas do usuário."""
         return self._contas.copy()  # Retorna cópia para evitar modificações externas
-    
+        
     def add_conta(self, conta: 'Conta') -> None:
-        """Adiciona uma conta ao usuário com validação."""
         if not hasattr(conta, 'get_numero'):
             raise ValueError("Objeto conta inválido")
             
-        if conta.get_numero() in [c.get_numero() for c in self._contas]:
-            raise ValueError("Conta já existe para este usuário")
-            
+        for c in self._contas:
+            if type(c) == type(conta): 
+                raise ValueError(f"Usuário já possui uma conta do tipo {type(conta).__name__}")
+                
         self._contas.append(conta)
     
     def remover_conta(self, numero_conta: int) -> bool:

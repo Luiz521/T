@@ -1,9 +1,19 @@
 import json
-import os
 from pathlib import Path
-from datetime import datetime
 import shutil
+from decimal import Decimal
+from datetime import datetime, date
 
+
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+    
 class DatabaseManager:
     """Gerencia a persistência dos dados em arquivo JSON com backup automático."""
     
@@ -73,7 +83,7 @@ class DatabaseManager:
         """Salva dados no arquivo com tratamento de erro."""
         try:
             with open(self.file_path, 'w', encoding='utf-8') as file:
-                json.dump(data, file, indent=4, ensure_ascii=False)
+                json.dump(data, file, indent=4, ensure_ascii=False, cls=DecimalEncoder)
         except Exception as e:
             raise DatabaseError(f"Falha ao salvar dados: {str(e)}")
 
