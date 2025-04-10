@@ -71,7 +71,6 @@ class DatabaseManager:
             backup_file = self.backup_dir / f"banco_ufs_backup_{timestamp}.json"
             shutil.copy2(self.file_path, backup_file)
             
-            # Limita a 5 backups mais recentes
             backups = sorted(self.backup_dir.glob("banco_ufs_backup_*.json"))
             for old_backup in backups[:-5]:
                 old_backup.unlink()

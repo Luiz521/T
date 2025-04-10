@@ -165,7 +165,6 @@ class BankAppTkinter:
             if novo_limite < 0:
                 raise ValueError("O limite não pode ser negativo")
                 
-            # Verifica se há saldo negativo que excederia o novo limite
             if self.current_account.get_saldo() < 0 and abs(self.current_account.get_saldo()) > novo_limite:
                 raise ValueError("Não é possível reduzir o limite abaixo do saldo negativo atual")
                 
@@ -208,7 +207,6 @@ class BankAppTkinter:
         
         self.setup_accounts_tab()
         
-        self.inicializar_dados_exemplo()
         self.update_clientes_table()
         self.update_contas_table()
     
@@ -252,7 +250,7 @@ class BankAppTkinter:
         header_frame = ttk.Frame(self.dashboard_frame)
         header_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        ttk.Label(header_frame, text="Bem-vindo ao Sistema Bancário", font=('Arial', 14, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(header_frame, text="Bem-vindo ao UFS BANK", font=('Arial', 14, 'bold')).pack(side=tk.LEFT)
         
         # Cards de resumo
         cards_frame = ttk.Frame(self.dashboard_frame)
@@ -270,16 +268,15 @@ class BankAppTkinter:
         ttk.Label(self.dashboard_frame, text="Últimas Movimentações", font=('Arial', 12)).pack(pady=(10, 0))
         
         self.dashboard_tree = ttk.Treeview(self.dashboard_frame, 
-                                         columns=("data", "conta", "operacao", "valor", "saldo"), 
+                                         columns=("data", "conta", "operacao", "valor"), 
                                          show="headings")
         
         self.dashboard_tree.heading("data", text="Data/Hora")
         self.dashboard_tree.heading("conta", text="Conta")
         self.dashboard_tree.heading("operacao", text="Operação")
         self.dashboard_tree.heading("valor", text="Valor (R$)")
-        self.dashboard_tree.heading("saldo", text="Saldo (R$)")
         
-        for col in ("data", "conta", "operacao", "valor", "saldo"):
+        for col in ("data", "conta", "operacao", "valor"):
             self.dashboard_tree.column(col, width=120, anchor=tk.CENTER)
         
         scrollbar = ttk.Scrollbar(self.dashboard_frame, orient="vertical", command=self.dashboard_tree.yview)
@@ -345,8 +342,6 @@ class BankAppTkinter:
         self.clientes_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Configura duplo clique para editar
-        self.clientes_tree.bind('<Double-1>', lambda e: self.editar_cliente())
     
     def setup_accounts_tab(self):
         """Configura a aba de Contas"""
@@ -403,6 +398,53 @@ class BankAppTkinter:
         # Inverte a ordem para a próxima vez
         tree.heading(col, command=lambda: self.sort_treeview(tree, col, not reverse))
     
+
+
+    def get_recent_transactions(self, limit=10):
+        """Retorna as últimas transações de todas as contas"""
+        all_transactions = []
+        for conta in self.banco.get_contas():
+            historico = conta.get_historico().get_transacoes()
+            for trans in historico:
+                trans['conta_numero'] = conta.get_numero()
+                trans['conta_tipo'] = "Corrente" if isinstance(conta, ContaCorrente) else "Poupança"
+                all_transactions.append(trans)
+        
+        all_transactions.sort(key=lambda x: x['data'], reverse=True)
+        
+        return all_transactions[:limit]
+
+    def update_recent_transactions(self):
+        """Atualiza a tabela de transações recentes no dashboard"""
+        for item in self.dashboard_tree.get_children():
+            self.dashboard_tree.delete(item)
+        
+        transactions = self.get_recent_transactions()
+        
+        for trans in transactions:
+            valor = trans['valor']
+            saldo = trans.get('saldo_atual', 0)
+
+            data = trans['data']
+            if isinstance(data, str):
+                try:
+                    data = datetime.strptime(data, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    try:
+                        data = datetime.strptime(data, "%d/%m/%Y %H:%M:%S") 
+                    except ValueError:
+                        print(f"[ERRO] Data inválida: {data}")
+                        continue
+            
+            self.dashboard_tree.insert("", "end", values=(
+                data.strftime("%d/%m/%Y %H:%M"),
+                f"{trans['conta_numero']} ({trans['conta_tipo']})",
+                trans['tipo'],
+                f"{valor:,.2f}",
+                f"{saldo:,.2f}"
+            ))
+
+
     def update_dashboard_cards(self):
         """Atualiza os cards de resumo no dashboard"""
         total_clientes = len(self.banco.get_usuarios())
@@ -412,27 +454,10 @@ class BankAppTkinter:
         self.total_clientes_var.set(str(total_clientes))
         self.total_contas_var.set(str(total_contas))
         self.total_saldo_var.set(f"R$ {total_saldo:,.2f}")
-    
-    def inicializar_dados_exemplo(self):
-        """Inicializa dados de exemplo se não existirem"""
-        if not self.banco.get_usuarios():
-            try:
-                usuario1 = self.banco.criar_usuario("João Silva", "12345678901", "01/01/1980", "Rua Exemplo, 123 - Centro - São Paulo/SP")
-                usuario2 = self.banco.criar_usuario("Maria Souza", "98765432109", "15/05/1990", "Av. Teste, 456 - Jardim - Rio de Janeiro/RJ")
-                
-                conta1 = self.banco.criar_conta_corrente("12345678901", "1234")
-                conta2 = self.banco.criar_conta_poupanca("98765432109", "4321")
-                
-                if conta1 and conta2:
-                    conta1.realizar_transacao(Deposito(1000.00))
-                    conta1.realizar_transacao(Saque(200.00))
-                    conta2.realizar_transacao(Deposito(500.00))
-                    conta1.realizar_transacao(Transferencia(300.00, conta2))
-                
-                self.status_var.set("Dados de exemplo criados com sucesso!")
-            except Exception as e:
-                self.status_var.set(f"Erro ao criar dados de exemplo: {str(e)}")
-    
+        
+        # Atualiza a tabela de transações
+        self.update_recent_transactions()
+
     # Métodos para clientes
     def show_cadastro_cliente(self, cliente=None):
         """Mostra a janela de cadastro/edição de cliente"""
@@ -968,6 +993,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Depósito de R$ {valor:.2f} realizado com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
                 
         except ValueError as e:
             messagebox.showerror("Erro", f"Valor inválido: {str(e)}", parent=self.deposito_window)
@@ -1025,6 +1052,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Saque de R$ {valor:.2f} realizado com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
                 
         except ValueError as e:
             messagebox.showerror("Erro", f"Valor inválido: {str(e)}", parent=self.saque_window)
@@ -1092,6 +1121,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Transferência de R$ {valor:,.2f} realizada com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
             else:
                 raise ValueError("Conta destino não encontrada")
         except ValueError as e:

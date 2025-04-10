@@ -45,7 +45,7 @@
         {
             "numero": 2,
             "cpf_cliente": "46495221029",
-            "saldo": 14857.9850984375,
+            "saldo": 14957.9850984375,
             "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
             "historico": [
                 {
@@ -107,16 +107,7 @@
                 {
                     "tipo": "Rendimento",
                     "valor": 712.2850046875001,
-                    "data": "10/04/2025 15:09:25",
-                    "conta_numero": 2,
-                    "conta_tipo": "Poupança"
-                },
-                {
-                    "tipo": "Transferencia",
-                    "valor": 100.0,
-                    "data": "10/04/2025 15:09:34",
-                    "conta_numero": 2,
-                    "conta_tipo": "Poupança"
+                    "data": "10/04/2025 15:09:25"
                 }
             ],
             "tipo": "poupanca",
@@ -126,17 +117,9 @@
         {
             "numero": 3,
             "cpf_cliente": "75984512068",
-            "saldo": 100.0,
+            "saldo": 0.0,
             "senha_hash": "b241d92eeb2526c472fbae9e77d6d23a835df4f6d97ed1f4375c5cd459fb8c93",
-            "historico": [
-                {
-                    "tipo": "Transferencia",
-                    "valor": 100.0,
-                    "data": "10/04/2025 15:09:34",
-                    "conta_numero": 3,
-                    "conta_tipo": "Poupança"
-                }
-            ],
+            "historico": [],
             "tipo": "poupanca",
             "taxa_rendimento": 0.05,
             "ultima_atualizacao": "2025-04-10 15:09:15"
