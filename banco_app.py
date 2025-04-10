@@ -250,7 +250,7 @@ class BankAppTkinter:
         header_frame = ttk.Frame(self.dashboard_frame)
         header_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        ttk.Label(header_frame, text="Bem-vindo ao Sistema Bancário", font=('Arial', 14, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(header_frame, text="Bem-vindo ao UFS BANK", font=('Arial', 14, 'bold')).pack(side=tk.LEFT)
         
         # Cards de resumo
         cards_frame = ttk.Frame(self.dashboard_frame)
@@ -993,6 +993,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Depósito de R$ {valor:.2f} realizado com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
                 
         except ValueError as e:
             messagebox.showerror("Erro", f"Valor inválido: {str(e)}", parent=self.deposito_window)
@@ -1050,6 +1052,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Saque de R$ {valor:.2f} realizado com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
                 
         except ValueError as e:
             messagebox.showerror("Erro", f"Valor inválido: {str(e)}", parent=self.saque_window)
@@ -1117,6 +1121,8 @@ class BankAppTkinter:
                 self.status_var.set(f"Transferência de R$ {valor:,.2f} realizada com sucesso!")
                 self.operacoes_window.destroy()
                 self.show_menu_operacoes()
+                self.update_dashboard_cards()
+
             else:
                 raise ValueError("Conta destino não encontrada")
         except ValueError as e:
