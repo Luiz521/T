@@ -19,7 +19,7 @@
             "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
             "historico": [],
             "tipo": "corrente",
-            "limite": 500.0,
+            "limite": 600.0,
             "limite_saques": 3,
             "saques_realizados": 0,
             "data_ultimo_saque": null,
@@ -28,23 +28,53 @@
         {
             "numero": 2,
             "cpf_cliente": "46495221029",
-            "saldo": 10815.0,
+            "saldo": 13145.70009375,
             "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
             "historico": [
                 {
                     "tipo": "Deposito",
                     "valor": 100.0,
-                    "data": "09/04/2025 17:33:24"
+                    "data": "09/04/2025 17:33:24",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
                 },
                 {
                     "tipo": "Rendimento",
                     "valor": 515.0,
-                    "data": "09/04/2025 17:34:09"
+                    "data": "09/04/2025 17:34:09",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
+                },
+                {
+                    "tipo": "Rendimento",
+                    "valor": 540.75,
+                    "data": "10/04/2025 12:27:58",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
+                },
+                {
+                    "tipo": "Rendimento",
+                    "valor": 567.7875,
+                    "data": "10/04/2025 12:28:58",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
+                },
+                {
+                    "tipo": "Rendimento",
+                    "valor": 596.176875,
+                    "data": "10/04/2025 12:29:58",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
+                },
+                {
+                    "tipo": "Rendimento",
+                    "valor": 625.98571875,
+                    "data": "10/04/2025 12:44:55"
                 }
             ],
             "tipo": "poupanca",
             "taxa_rendimento": 0.05,
-            "ultima_atualizacao": "2025-04-09 17:34:09"
+            "ultima_atualizacao": "2025-04-10 12:44:55"
         }
     ],
     "ultimo_numero_conta": 2
