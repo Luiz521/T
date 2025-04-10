@@ -9,6 +9,15 @@
                 1,
                 2
             ]
+        },
+        {
+            "nome": "Eduardo",
+            "cpf": "75984512068",
+            "data_nascimento": "11/10/2005",
+            "endereco": "Rua mariano procopio",
+            "contas": [
+                3
+            ]
         }
     ],
     "contas": [
@@ -21,7 +30,9 @@
                 {
                     "tipo": "Deposito",
                     "valor": 1000.0,
-                    "data": "10/04/2025 12:53:12"
+                    "data": "10/04/2025 12:53:12",
+                    "conta_numero": 1,
+                    "conta_tipo": "Corrente"
                 }
             ],
             "tipo": "corrente",
@@ -34,7 +45,7 @@
         {
             "numero": 2,
             "cpf_cliente": "46495221029",
-            "saldo": 14145.70009375,
+            "saldo": 14245.70009375,
             "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
             "historico": [
                 {
@@ -82,13 +93,32 @@
                 {
                     "tipo": "Deposito",
                     "valor": 1000.0,
-                    "data": "10/04/2025 12:53:04"
+                    "data": "10/04/2025 12:53:04",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
+                },
+                {
+                    "tipo": "Deposito",
+                    "valor": 100.0,
+                    "data": "10/04/2025 12:55:47",
+                    "conta_numero": 2,
+                    "conta_tipo": "Poupança"
                 }
             ],
             "tipo": "poupanca",
             "taxa_rendimento": 0.05,
             "ultima_atualizacao": "2025-04-10 12:44:55"
+        },
+        {
+            "numero": 3,
+            "cpf_cliente": "75984512068",
+            "saldo": 0.0,
+            "senha_hash": "b241d92eeb2526c472fbae9e77d6d23a835df4f6d97ed1f4375c5cd459fb8c93",
+            "historico": [],
+            "tipo": "poupanca",
+            "taxa_rendimento": 0.05,
+            "ultima_atualizacao": "2025-04-10 15:09:15"
         }
     ],
-    "ultimo_numero_conta": 2
+    "ultimo_numero_conta": 3
 }
