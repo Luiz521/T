@@ -268,16 +268,15 @@ class BankAppTkinter:
         ttk.Label(self.dashboard_frame, text="Últimas Movimentações", font=('Arial', 12)).pack(pady=(10, 0))
         
         self.dashboard_tree = ttk.Treeview(self.dashboard_frame, 
-                                         columns=("data", "conta", "operacao", "valor", "saldo"), 
+                                         columns=("data", "conta", "operacao", "valor"), 
                                          show="headings")
         
         self.dashboard_tree.heading("data", text="Data/Hora")
         self.dashboard_tree.heading("conta", text="Conta")
         self.dashboard_tree.heading("operacao", text="Operação")
         self.dashboard_tree.heading("valor", text="Valor (R$)")
-        self.dashboard_tree.heading("saldo", text="Saldo (R$)")
         
-        for col in ("data", "conta", "operacao", "valor", "saldo"):
+        for col in ("data", "conta", "operacao", "valor"):
             self.dashboard_tree.column(col, width=120, anchor=tk.CENTER)
         
         scrollbar = ttk.Scrollbar(self.dashboard_frame, orient="vertical", command=self.dashboard_tree.yview)
