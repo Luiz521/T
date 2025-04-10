@@ -109,6 +109,7 @@ class BankAppTkinter:
         self.limite_window = tk.Toplevel(self.root)
         self.limite_window.title("Gestão de Limite")
         self.limite_window.geometry("400x250")
+        self.limite_window.grab_set() 
         
         # Frame principal
         main_frame = ttk.Frame(self.limite_window)
