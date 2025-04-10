@@ -22,18 +22,18 @@ class Transacao:
         """
         raise NotImplementedError("Método registrar deve ser implementado")
     
-    def _validar_valor(self, valor: Union[float, Decimal, int]) -> Decimal:
-        """Valida e converte o valor para Decimal."""
-        if isinstance(valor, Decimal):
+    def _validar_valor(self, valor: Union[float, Decimal, int]) -> float:
+        """Valida e converte o valor para float."""
+        if isinstance(valor, float):
             return valor
         try:
-            valor_decimal = Decimal(str(valor)).quantize(Decimal('0.01'))
-            if valor_decimal <= 0:
+            valor_float = float(Decimal(str(valor)).quantize(Decimal('0.01')))
+            if valor_float <= 0:
                 raise ValueError("Valor deve ser positivo")
-            return valor_decimal
+            return valor_float
         except:
             raise ValueError("Valor da transação inválido")
-
+        
 class Deposito(Transacao):
     """Representa uma transação de depósito em conta."""
     

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import traceback
 from banco import Banco
+import banco
 from pessoa import Usuario
 from conta import ContaCorrente, ContaPoupanca
 from transacao import Deposito, Saque, Transferencia
@@ -1336,15 +1337,26 @@ class BankAppTkinter:
         except Exception as e:
             print(f"Erro ao salvar dados: {str(e)}")
             self.root.destroy()
+    def on_closing(self):
+        """Executado quando a janela principal é fechada"""
+        try:
+            for conta in self.banco.get_contas():
+                if isinstance(conta, ContaPoupanca):
+                    conta.encerrar()
+            
+            self.banco._salvar_dados()
+            self.root.destroy()
+        except Exception as e:
+            print(f"Erro ao fechar aplicação: {str(e)}")
+            traceback.print_exc()
+            self.root.destroy()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = BankAppTkinter(root)
     
-    def on_closing():
-        app.banco.encerrar_contas_poupanca()
-        root.destroy()
+ 
     
-    root.protocol("WM_DELETE_WINDOW", on_closing)
-    root.mainloop()
+root.protocol("WM_DELETE_WINDOW", lambda: app.on_closing())  
+root.mainloop()

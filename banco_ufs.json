@@ -1,58 +1,51 @@
 {
     "usuarios": [
         {
-            "nome": "MOHAMED",
-            "cpf": "92766027041",
+            "nome": "LULA DA SILVA",
+            "cpf": "46495221029",
             "data_nascimento": "11/09/2001",
-            "endereco": "Nova York, USA",
-            "contas": [
-                2
-            ]
-        },
-        {
-            "nome": "Xi Jinping",
-            "cpf": "71451145004",
-            "data_nascimento": "05/11/1605",
-            "endereco": "londres, england",
+            "endereco": "BANGU, HELL DE JANEIRO",
             "contas": [
                 1,
-                3
+                2
             ]
         }
     ],
     "contas": [
         {
             "numero": 1,
-            "cpf_cliente": "714.511.450-04",
-            "saldo": 11014.5,
+            "cpf_cliente": "46495221029",
+            "saldo": 1000.0,
             "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
-            "tipo": "poupanca",
-            "taxa_rendimento": 0.05,
-            "data_ultimo_rendimento": "2025-04-08 20:21:54",
-            "minutos_acumulados": 0
-        },
-        {
-            "numero": 2,
-            "cpf_cliente": "927.660.270-41",
-            "saldo": 551.25,
-            "senha_hash": "91562db5f00457f8b59f3d8272f8e9da2ebbd4756a0746f8fe4416a964ab238b",
-            "tipo": "poupanca",
-            "taxa_rendimento": 0.05,
-            "data_ultimo_rendimento": "2025-04-08 20:22:15",
-            "minutos_acumulados": 0
-        },
-        {
-            "numero": 3,
-            "cpf_cliente": "714.511.450-04",
-            "saldo": 0.0,
-            "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
+            "historico": [],
             "tipo": "corrente",
             "limite": 500.0,
             "limite_saques": 3,
             "saques_realizados": 0,
             "data_ultimo_saque": null,
             "emprestimos": []
+        },
+        {
+            "numero": 2,
+            "cpf_cliente": "46495221029",
+            "saldo": 10815.0,
+            "senha_hash": "7e1a7a3796bfc297368ef4635656e96e05fa2ca721356b1c97032ed5b5bbda6f",
+            "historico": [
+                {
+                    "tipo": "Deposito",
+                    "valor": 100.0,
+                    "data": "09/04/2025 17:33:24"
+                },
+                {
+                    "tipo": "Rendimento",
+                    "valor": 515.0,
+                    "data": "09/04/2025 17:34:09"
+                }
+            ],
+            "tipo": "poupanca",
+            "taxa_rendimento": 0.05,
+            "ultima_atualizacao": "2025-04-09 17:34:09"
         }
     ],
-    "ultimo_numero_conta": 3
+    "ultimo_numero_conta": 2
 }
